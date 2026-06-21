@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FocusFlow — Prototype v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0F0F1A; --surface: #1A1A2E; --card: #16213E;
+  --accent: #7C3AED; --light: #A855F7; --glow: rgba(124,58,237,0.35);
+  --text: #F1F0FF; --muted: #8B8BAE; --success: #6BCB77;
+  --danger: #FF6B6B; --warning: #FFB347; --border: rgba(124,58,237,0.22);
+}
+body {
+  background: #060610;
+  display: flex; align-items: flex-start; justify-content: center;
+  min-height: 100vh; font-family: 'Inter', system-ui, sans-serif;
+  padding: 24px; gap: 32px;
+}
+/* Sidebar nav for desktop */
+.sidebar {
+  position: sticky; top: 24px;
+  background: var(--surface); border-radius: 20px;
+  padding: 20px 14px; display: flex; flex-direction: column; gap: 6px;
+  min-width: 160px; align-self: flex-start;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.sidebar h3 { color: var(--accent); font-size: 15px; font-weight: 800; margin-bottom: 10px; padding-left: 8px; }
+.sidebar-btn {
+  background: none; border: none; color: var(--muted);
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  padding: 9px 12px; border-radius: 10px; cursor: pointer;
+  text-align: left; transition: all .15s; display: flex; align-items: center; gap: 8px;
+}
+.sidebar-btn:hover { background: rgba(124,58,237,.1); color: var(--text); }
+.sidebar-btn.active { background: rgba(124,58,237,.18); color: var(--light); }
+.sidebar-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 6px 0; }
+
+/* Phone shell */
+.phone {
+  width: 375px; min-height: 812px;
+  background: var(--bg); border-radius: 44px; overflow: hidden;
+  position: relative;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 40px 80px rgba(0,0,0,0.7), 0 0 60px rgba(124,58,237,0.1);
+  display: flex; flex-direction: column; flex-shrink: 0;
+}
+.status-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 28px 0; font-size: 12px; font-weight: 600; color: var(--muted); flex-shrink: 0;
+}
+.screen { display: none; flex-direction: column; flex: 1; padding: 0 22px 16px; overflow-y: auto; }
+.screen.active { display: flex; }
+.screen::-webkit-scrollbar { width: 3px; }
+.screen::-webkit-scrollbar-thumb { background: var(--surface); border-radius: 99px; }
+
+/* Nav bar */
+.nav-bar { display: flex; background: var(--surface); border-top: 1px solid rgba(255,255,255,0.06); padding: 10px 0 18px; flex-shrink: 0; }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; border: none; background: none; color: var(--muted); font-family: inherit; transition: color .2s; }
+.nav-item.active { color: var(--light); }
+.nav-icon { font-size: 20px; }
+.nav-label { font-size: 10px; font-weight: 600; }
+
+/* Buttons */
+.btn-primary {
+  width: 100%; padding: 17px;
+  background: linear-gradient(135deg, var(--accent), var(--light));
+  border: none; border-radius: 16px; color: #fff; font-size: 16px; font-weight: 700;
+  font-family: inherit; cursor: pointer; box-shadow: 0 8px 24px var(--glow);
+  transition: opacity .15s, transform .1s;
+}
+.btn-primary:hover { opacity: .9; }
+.btn-primary:active { transform: scale(.98); }
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+.btn-secondary { width: 100%; padding: 16px; background: var(--surface); border: none; border-radius: 16px; color: var(--text); font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; transition: opacity .15s; }
+.btn-secondary:hover { opacity: .8; }
+.back-btn { width: 38px; height: 38px; border-radius: 12px; background: var(--surface); border: none; cursor: pointer; color: var(--text); font-size: 17px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+/* ── ONBOARDING ── */
+#onboarding { align-items: center; justify-content: space-between; padding: 40px 28px 36px; }
+.onboard-slides { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.onboard-icon { font-size: 72px; margin-bottom: 24px; }
+.onboard-title { color: var(--text); font-size: 26px; font-weight: 900; text-align: center; margin-bottom: 12px; letter-spacing: -.5px; }
+.onboard-desc { color: var(--muted); font-size: 15px; text-align: center; line-height: 1.65; max-width: 280px; }
+.dot-row { display: flex; gap: 8px; justify-content: center; margin: 28px 0; }
+.dot { width: 8px; height: 8px; border-radius: 99px; background: var(--muted); transition: all .3s; }
+.dot.active { background: var(--accent); width: 22px; }
+.onboard-footer { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.btn-skip { background: none; border: none; color: var(--muted); font-size: 14px; font-family: inherit; cursor: pointer; padding: 8px; text-align: center; }
+
+/* ── AUTH ── */
+#auth { padding-top: 0; }
+.auth-logo { color: var(--accent); font-size: 32px; font-weight: 900; text-align: center; letter-spacing: -1px; padding: 32px 0 24px; }
+.auth-tabs { display: flex; background: var(--surface); border-radius: 14px; padding: 4px; margin-bottom: 22px; }
+.auth-tab { flex: 1; padding: 11px; border-radius: 10px; border: none; background: none; color: var(--muted); font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all .2s; }
+.auth-tab.active { background: var(--accent); color: #fff; }
+.form-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 1px; display: block; margin-bottom: 7px; }
+.form-input { width: 100%; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; color: var(--text); font-size: 15px; font-family: inherit; outline: none; margin-bottom: 14px; transition: border-color .2s; }
+.form-input:focus { border-color: var(--accent); }
+.form-input::placeholder { color: var(--muted); }
+.auth-error { color: var(--danger); font-size: 13px; text-align: center; margin-bottom: 12px; min-height: 18px; }
+.forgot-link { color: var(--muted); font-size: 13px; text-align: center; background: none; border: none; font-family: inherit; cursor: pointer; padding: 12px; display: block; width: 100%; }
+.forgot-link:hover { color: var(--light); }
+
+/* ── HOME ── */
+#home .greeting { color: var(--muted); font-size: 13px; margin-top: 20px; margin-bottom: 4px; }
+#home .page-title { color: var(--text); font-size: 26px; font-weight: 800; letter-spacing: -.5px; margin-bottom: 18px; }
+.progress-card { background: var(--surface); border-radius: 18px; padding: 16px; margin-bottom: 18px; }
+.progress-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+.progress-header span:first-child { color: var(--muted); font-size: 13px; }
+.progress-header span:last-child { color: var(--light); font-size: 13px; font-weight: 700; }
+.progress-track { height: 6px; background: #2A2A4A; border-radius: 99px; margin-bottom: 12px; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--light)); border-radius: 99px; transition: width .5s ease; }
+.chip-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.chip { font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 99px; background: rgba(124,58,237,.15); color: var(--light); }
+.chip.green { background: rgba(107,203,119,.15); color: var(--success); }
+.task-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 80px; }
+.task-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: opacity .2s, border-color .2s; }
+.task-card.done { opacity: .45; border-color: transparent; cursor: default; }
+.task-card:not(.done):hover { border-color: rgba(168,85,247,.4); }
+.task-card-actions { display: flex; gap: 6px; }
+.task-action-btn { background: none; border: none; cursor: pointer; font-size: 15px; padding: 4px; opacity: 0; transition: opacity .2s; }
+.task-card:hover .task-action-btn { opacity: 1; }
+.checkbox { width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--muted); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; font-weight: 700; color: #fff; transition: all .2s; }
+.checkbox.checked { background: var(--success); border-color: var(--success); }
+.task-title { flex: 1; color: var(--text); font-size: 15px; font-weight: 600; line-height: 1.35; }
+.task-title.strikethrough { text-decoration: line-through; color: var(--muted); }
+.priority-badge { padding: 3px 8px; border-radius: 8px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.priority-HIGH   { background: rgba(255,107,107,.15); color: #FF6B6B; }
+.priority-MEDIUM { background: rgba(255,179,71,.15);  color: #FFB347; }
+.priority-LOW    { background: rgba(107,203,119,.15); color: #6BCB77; }
+.task-arrow { color: var(--muted); font-size: 14px; }
+.fab { position: sticky; bottom: 0; margin: 0 -22px -16px; padding: 16px 22px 22px; background: linear-gradient(to top, var(--bg) 70%, transparent); }
+.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 80px; }
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-title { color: var(--text); font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.empty-desc { color: var(--muted); text-align: center; line-height: 1.6; font-size: 14px; }
+
+/* ── ADD / EDIT TASK ── */
+#add .header, #edit .header { display: flex; align-items: center; gap: 14px; padding: 18px 0 24px; }
+#add .page-title, #edit .page-title { color: var(--text); font-size: 22px; font-weight: 800; }
+.char-count { color: var(--muted); font-size: 11px; text-align: right; margin-bottom: 22px; }
+.priority-row { display: flex; gap: 10px; margin-bottom: 22px; }
+.pri-btn { flex: 1; padding: 13px 0; background: var(--surface); border: 2px solid transparent; border-radius: 12px; color: var(--muted); font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; transition: all .2s; }
+.pri-btn.active-HIGH   { border-color: #FF6B6B; background: rgba(255,107,107,.12); color: #FF6B6B; }
+.pri-btn.active-MEDIUM { border-color: #FFB347; background: rgba(255,179,71,.12);  color: #FFB347; }
+.pri-btn.active-LOW    { border-color: #6BCB77; background: rgba(107,203,119,.12); color: #6BCB77; }
+.info-card { background: var(--surface); border-radius: 14px; padding: 14px 16px; margin-bottom: 22px; }
+.info-card-label { color: var(--muted); font-size: 13px; margin-bottom: 4px; }
+.info-card-value { color: var(--light); font-size: 22px; font-weight: 800; }
+.delete-btn { width: 100%; margin-top: 12px; padding: 15px; background: rgba(255,107,107,.1); border: 1px solid rgba(255,107,107,.25); border-radius: 14px; color: var(--danger); font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .2s; }
+.delete-btn:hover { background: rgba(255,107,107,.2); }
+
+/* ── FOCUS ── */
+#focus { align-items: center; }
+#focus .back-row { align-self: flex-start; padding-top: 14px; margin-bottom: 16px; }
+.focus-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px; }
+.focus-task-name { color: var(--text); font-size: 22px; font-weight: 800; text-align: center; line-height: 1.35; margin-bottom: 28px; max-width: 300px; }
+.ring-wrapper { position: relative; width: 230px; height: 230px; margin-bottom: 28px; }
+.ring-wrapper svg { position: absolute; top: 0; left: 0; }
+.ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.timer-display { color: var(--text); font-size: 52px; font-weight: 900; letter-spacing: -2px; }
+.timer-status { color: var(--muted); font-size: 13px; margin-top: 4px; }
+.focus-controls { display: flex; gap: 12px; width: 100%; margin-bottom: 12px; }
+.btn-play { flex: 2; padding: 17px; background: linear-gradient(135deg, var(--accent), var(--light)); border: none; border-radius: 16px; color: #fff; font-size: 18px; font-weight: 700; font-family: inherit; cursor: pointer; box-shadow: 0 8px 24px var(--glow); transition: opacity .15s; }
+.btn-play:hover { opacity: .9; }
+.btn-reset { flex: 1; padding: 17px; background: var(--surface); border: none; border-radius: 16px; color: var(--muted); font-size: 22px; font-family: inherit; cursor: pointer; }
+.btn-done-early { width: 100%; padding: 14px; background: transparent; border: 1px solid rgba(107,203,119,.4); border-radius: 14px; color: var(--success); font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; margin-bottom: 8px; transition: background .2s; }
+.btn-done-early:hover { background: rgba(107,203,119,.08); }
+.btn-give-up { background: none; border: none; color: var(--muted); font-size: 14px; font-family: inherit; cursor: pointer; padding: 10px; }
+
+/* ── DONE ── */
+#done { align-items: center; justify-content: center; }
+.done-emoji { font-size: 72px; margin-bottom: 16px; animation: pop .4s cubic-bezier(.34,1.56,.64,1); }
+@keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.done-title { color: var(--text); font-size: 28px; font-weight: 900; margin-bottom: 8px; }
+.done-task { color: var(--muted); font-size: 15px; text-align: center; margin-bottom: 20px; max-width: 260px; }
+.done-badge { background: rgba(124,58,237,.15); border-radius: 12px; padding: 10px 20px; color: var(--light); font-weight: 700; font-size: 14px; margin-bottom: 36px; }
+.done-actions { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+
+/* ── BREAK ── */
+#brk { align-items: center; justify-content: center; }
+.break-emoji { font-size: 64px; margin-bottom: 16px; }
+.break-title { color: var(--text); font-size: 26px; font-weight: 800; margin-bottom: 8px; }
+.break-sub { color: var(--muted); text-align: center; font-size: 14px; line-height: 1.6; margin-bottom: 36px; max-width: 260px; }
+.break-timer { color: var(--light); font-size: 58px; font-weight: 900; letter-spacing: -2px; margin-bottom: 36px; }
+.btn-skip { background: none; border: none; color: var(--muted); font-size: 14px; font-family: inherit; cursor: pointer; padding: 12px; margin-top: 10px; }
+
+/* ── NOTIFICATIONS ── */
+#notif .page-title { color: var(--text); font-size: 24px; font-weight: 800; padding-top: 20px; margin-bottom: 6px; }
+#notif .page-sub { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+.notif-card { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+.notif-row { display: flex; justify-content: space-between; align-items: center; }
+.notif-title { color: var(--text); font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+.notif-desc { color: var(--muted); font-size: 12px; }
+.time-picker { display: flex; gap: 8px; margin-top: 14px; align-items: center; }
+.time-picker select { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 10px 12px; font-family: inherit; font-size: 14px; outline: none; cursor: pointer; }
+.time-picker-label { color: var(--muted); font-size: 14px; font-weight: 600; }
+.notif-preview { background: var(--card); border-radius: 14px; padding: 14px; border: 1px solid var(--border); margin-top: 6px; }
+.notif-preview-title { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-bottom: 12px; }
+.notif-bubble { background: var(--surface); border-radius: 12px; padding: 12px 14px; display: flex; gap: 12px; align-items: flex-start; }
+.notif-app-icon { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg, var(--accent), var(--light)); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.notif-bubble-text .notif-bubble-title { color: var(--text); font-size: 13px; font-weight: 700; }
+.notif-bubble-text .notif-bubble-body { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+/* ── STATS ── */
+#stats .page-title { color: var(--text); font-size: 26px; font-weight: 800; padding-top: 20px; margin-bottom: 20px; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.stat-card { background: var(--card); border-radius: 18px; padding: 16px; }
+.stat-card-label { color: var(--muted); font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+.stat-card-value { font-size: 36px; font-weight: 900; margin-bottom: 2px; }
+.stat-card-unit { color: var(--muted); font-size: 12px; }
+.chart-card { background: var(--surface); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+.chart-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.chart-title { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+.chart { display: flex; align-items: flex-end; height: 130px; gap: 6px; }
+.bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; justify-content: flex-end; }
+.bar-count { color: var(--muted); font-size: 9px; min-height: 12px; }
+.bar { width: 100%; border-radius: 6px; transition: height .4s ease; min-height: 4px; }
+.bar.today { background: linear-gradient(180deg, var(--accent), var(--light)); }
+.bar.past { background: var(--card); }
+.bar-day { color: var(--muted); font-size: 9px; margin-top: 4px; }
+.total-card { background: var(--card); border-radius: 18px; padding: 16px; text-align: center; margin-bottom: 24px; }
+.total-label { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+.total-value { color: var(--light); font-size: 48px; font-weight: 900; }
+
+/* ── SETTINGS ── */
+#settings .page-title { color: var(--text); font-size: 26px; font-weight: 800; padding-top: 20px; margin-bottom: 20px; }
+.settings-section-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-bottom: 10px; margin-top: 20px; }
+.settings-card { background: var(--surface); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
+.settings-row { display: flex; justify-content: space-between; align-items: center; }
+.settings-label { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+.settings-value { color: var(--text); font-size: 15px; font-weight: 500; }
+.options-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.option-btn { padding: 10px 16px; border-radius: 10px; background: var(--surface); border: 2px solid transparent; color: var(--muted); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all .2s; }
+.option-btn.selected { border-color: var(--accent); background: rgba(124,58,237,.15); color: var(--light); }
+.toggle { position: relative; width: 44px; height: 26px; cursor: pointer; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: #2A2A4A; border-radius: 99px; transition: background .2s; }
+.toggle-slider::before { content: ''; position: absolute; width: 20px; height: 20px; border-radius: 50%; background: #fff; top: 3px; left: 3px; transition: transform .2s; }
+.toggle input:checked + .toggle-slider { background: var(--accent); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(18px); }
+.btn-logout { width: 100%; margin-top: 28px; padding: 16px; background: rgba(255,107,107,.12); border: 1px solid rgba(255,107,107,.3); border-radius: 14px; color: var(--danger); font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; transition: background .2s; }
+.btn-logout:hover { background: rgba(255,107,107,.2); }
+.version-text { color: var(--muted); font-size: 12px; text-align: center; margin: 20px 0 32px; }
+
+/* Modal */
+.modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.7); z-index: 100; display: none; align-items: flex-end; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border-radius: 24px 24px 0 0; padding: 24px; width: 100%; border-top: 1px solid rgba(255,255,255,.08); }
+.modal-title { color: var(--text); font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+.modal-desc { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+.modal-actions { display: flex; flex-direction: column; gap: 10px; }
+.btn-danger { width: 100%; padding: 15px; background: rgba(255,107,107,.15); border: 1px solid rgba(255,107,107,.3); border-radius: 14px; color: var(--danger); font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; }
+.btn-cancel { width: 100%; padding: 14px; background: none; border: none; color: var(--muted); font-size: 14px; font-family: inherit; cursor: pointer; }
+
+/* Toast */
+.toast { position: absolute; top: 60px; left: 22px; right: 22px; z-index: 200; background: var(--surface); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); transform: translateY(-20px); opacity: 0; transition: all .3s; pointer-events: none; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast-icon { font-size: 20px; }
+.toast-text { color: var(--text); font-size: 14px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar (desktop helper) -->
+<div class="sidebar">
+  <h3>📱 Screens</h3>
+  <button class="sidebar-btn" onclick="jumpTo('onboarding')">🌟 Onboarding</button>
+  <button class="sidebar-btn" onclick="jumpTo('auth', 'login')">🔐 Login</button>
+  <button class="sidebar-btn" onclick="jumpTo('auth', 'register')">✏️ Register</button>
+  <div class="sidebar-divider"></div>
+  <button class="sidebar-btn active" onclick="jumpTo('home')">⊟ Home</button>
+  <button class="sidebar-btn" onclick="jumpTo('add')">➕ Add Task</button>
+  <button class="sidebar-btn" onclick="jumpTo('edit')">✏️ Edit Task</button>
+  <div class="sidebar-divider"></div>
+  <button class="sidebar-btn" onclick="jumpToFocus()">▶ Focus Timer</button>
+  <button class="sidebar-btn" onclick="jumpTo('done')">✅ Done</button>
+  <button class="sidebar-btn" onclick="jumpTo('brk')">☕ Break</button>
+  <div class="sidebar-divider"></div>
+  <button class="sidebar-btn" onclick="jumpTo('notif')">🔔 Notifications</button>
+  <button class="sidebar-btn" onclick="jumpTo('stats')">◎ Stats</button>
+  <button class="sidebar-btn" onclick="jumpTo('settings')">⊙ Settings</button>
+</div>
+
+<div class="phone">
+  <!-- Status bar -->
+  <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <span class="toast-icon" id="toast-icon">✅</span>
+    <span class="toast-text" id="toast-text">Task saved!</span>
+  </div>
+
+  <!-- Delete modal -->
+  <div class="modal-overlay" id="delete-modal">
+    <div class="modal">
+      <div class="modal-title">Delete Task?</div>
+      <div class="modal-desc" id="delete-modal-task">This will permanently remove the task.</div>
+      <div class="modal-actions">
+        <button class="btn-danger" onclick="confirmDelete()">🗑 Delete Task</button>
+        <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ONBOARDING ══ -->
+  <div class="screen active" id="onboarding">
+    <div class="onboard-slides" id="onboard-slides">
+      <!-- rendered by JS -->
+    </div>
+    <div class="dot-row" id="dot-row"></div>
+    <div class="onboard-footer">
+      <button class="btn-primary" id="onboard-next-btn" onclick="nextSlide()">Next →</button>
+      <button class="btn-skip" onclick="skipOnboarding()">Skip</button>
+    </div>
+  </div>
+
+  <!-- ══ AUTH ══ -->
+  <div class="screen" id="auth">
+    <div class="auth-logo">FocusFlow</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Log In</button>
+      <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Sign Up</button>
+    </div>
+    <div id="auth-fields"></div>
+    <div class="auth-error" id="auth-error"></div>
+    <button class="btn-primary" id="auth-submit-btn" onclick="submitAuth()">Log In</button>
+    <button class="forgot-link" id="forgot-btn" onclick="showForgot()">Forgot your password?</button>
+  </div>
+
+  <!-- ══ HOME ══ -->
+  <div class="screen" id="home">
+    <p class="greeting">Good day, Alex 👋</p>
+    <h1 class="page-title">What's your focus?</h1>
+    <div class="progress-card">
+      <div class="progress-header">
+        <span>Today's progress</span>
+        <span id="progress-text">1/3 done</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:33%"></div></div>
+      <div class="chip-row">
+        <div class="chip" id="streak-chip">🔥 3 day streak</div>
+        <div class="chip green" id="done-chip">✅ 1 today</div>
+      </div>
+    </div>
+    <div id="task-list-container"></div>
+    <div class="fab"><button class="btn-primary" onclick="goTo('add')">+ Add Task</button></div>
+  </div>
+
+  <!-- ══ ADD TASK ══ -->
+  <div class="screen" id="add">
+    <div class="header">
+      <button class="back-btn" onclick="goTo('home')">←</button>
+      <h2 class="page-title">New Task</h2>
+    </div>
+    <label class="form-label">TASK NAME</label>
+    <textarea class="form-input" id="new-task-input" rows="2" placeholder="What do you need to do?" maxlength="120"
+      oninput="updateCharCount('new-task-input','add-char-count'); updateAddBtn()"></textarea>
+    <div class="char-count"><span id="add-char-count">0</span>/120</div>
+    <label class="form-label">PRIORITY</label>
+    <div class="priority-row">
+      <button class="pri-btn" id="add-pri-HIGH"   onclick="selectPriority('add','HIGH')">High</button>
+      <button class="pri-btn active-MEDIUM" id="add-pri-MEDIUM" onclick="selectPriority('add','MEDIUM')">Medium</button>
+      <button class="pri-btn" id="add-pri-LOW"    onclick="selectPriority('add','LOW')">Low</button>
+    </div>
+    <label class="form-label">NOTES (optional)</label>
+    <textarea class="form-input" id="new-task-notes" rows="3" placeholder="Any extra context..." style="margin-bottom:22px"></textarea>
+    <div class="info-card">
+      <div class="info-card-label">⏱ Focus session duration</div>
+      <div class="info-card-value" id="focus-dur-display">25 minutes</div>
+    </div>
+    <button class="btn-primary" id="add-task-btn" onclick="addTask()" disabled>Add Task</button>
+  </div>
+
+  <!-- ══ EDIT TASK ══ -->
+  <div class="screen" id="edit">
+    <div class="header">
+      <button class="back-btn" onclick="goTo('home')">←</button>
+      <h2 class="page-title">Edit Task</h2>
+    </div>
+    <label class="form-label">TASK NAME</label>
+    <textarea class="form-input" id="edit-task-input" rows="2" maxlength="120"
+      oninput="updateCharCount('edit-task-input','edit-char-count'); updateEditBtn()"></textarea>
+    <div class="char-count"><span id="edit-char-count">0</span>/120</div>
+    <label class="form-label">PRIORITY</label>
+    <div class="priority-row">
+      <button class="pri-btn" id="edit-pri-HIGH"   onclick="selectPriority('edit','HIGH')">High</button>
+      <button class="pri-btn" id="edit-pri-MEDIUM" onclick="selectPriority('edit','MEDIUM')">Medium</button>
+      <button class="pri-btn" id="edit-pri-LOW"    onclick="selectPriority('edit','LOW')">Low</button>
+    </div>
+    <label class="form-label">NOTES (optional)</label>
+    <textarea class="form-input" id="edit-task-notes" rows="3" style="margin-bottom:22px"></textarea>
+    <button class="btn-primary" id="edit-save-btn" onclick="saveEdit()">Save Changes</button>
+    <button class="delete-btn" onclick="openDeleteModal(state.editingId)">🗑 Delete Task</button>
+  </div>
+
+  <!-- ══ FOCUS ══ -->
+  <div class="screen" id="focus">
+    <div class="back-row"><button class="back-btn" onclick="giveUp()">←</button></div>
+    <p class="focus-label">NOW FOCUSING ON</p>
+    <p class="focus-task-name" id="focus-task-name">Review project brief</p>
+    <div class="ring-wrapper">
+      <svg width="230" height="230" viewBox="0 0 230 230">
+        <defs>
+          <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#7C3AED"/><stop offset="100%" stop-color="#A855F7"/>
+          </linearGradient>
+        </defs>
+        <circle cx="115" cy="115" r="100" fill="none" stroke="#1A1A2E" stroke-width="14"/>
+        <circle id="timer-ring" cx="115" cy="115" r="100" fill="none" stroke="url(#g)" stroke-width="14"
+          stroke-dasharray="628.3" stroke-dashoffset="628.3" stroke-linecap="round"
+          transform="rotate(-90 115 115)" style="transition:stroke-dashoffset 1s linear"/>
+      </svg>
+      <div class="ring-center">
+        <div class="timer-display" id="timer-display">25:00</div>
+        <div class="timer-status" id="timer-status">tap start</div>
+      </div>
+    </div>
+    <div class="focus-controls">
+      <button class="btn-play" id="play-btn" onclick="toggleTimer()">▶ Start</button>
+      <button class="btn-reset" onclick="resetTimer()">↺</button>
+    </div>
+    <button class="btn-done-early" onclick="markDone()">✓ Mark as Done</button>
+    <button class="btn-give-up" onclick="giveUp()">Give Up</button>
+  </div>
+
+  <!-- ══ DONE ══ -->
+  <div class="screen" id="done">
+    <div class="done-emoji">✅</div>
+    <h2 class="done-title">Task Complete!</h2>
+    <p class="done-task" id="done-task-name"></p>
+    <div class="done-badge" id="done-badge"></div>
+    <div class="done-actions">
+      <button class="btn-primary" onclick="startBreak()">☕ Take a 5-min Break</button>
+      <button class="btn-secondary" onclick="switchTab('home')">Next Task →</button>
+    </div>
+  </div>
+
+  <!-- ══ BREAK ══ -->
+  <div class="screen" id="brk">
+    <div class="break-emoji">🧘</div>
+    <h2 class="break-title">Break Time</h2>
+    <p class="break-sub">Rest your eyes. Breathe. You earned it.</p>
+    <div class="break-timer" id="break-display">05:00</div>
+    <button class="btn-primary" id="break-play-btn" onclick="toggleBreak()" style="width:200px;margin:0 auto">▶ Start</button>
+    <button class="btn-skip" onclick="endBreak()">Skip Break</button>
+  </div>
+
+  <!-- ══ NOTIFICATIONS ══ -->
+  <div class="screen" id="notif">
+    <h1 class="page-title">Notifications</h1>
+    <p class="page-sub">Set up reminders to keep your focus streak going.</p>
+
+    <div class="notif-card">
+      <div class="notif-row">
+        <div>
+          <div class="notif-title">Daily Focus Reminder</div>
+          <div class="notif-desc">Get a push notification to start your day</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" checked id="daily-toggle" onchange="updateNotifPreview()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="time-picker" id="time-picker">
+        <select id="notif-hour" onchange="updateNotifPreview()">
+          <!-- populated by JS -->
+        </select>
+        <span class="time-picker-label">:</span>
+        <select id="notif-min" onchange="updateNotifPreview()">
+          <option value="00">00</option><option value="15">15</option>
+          <option value="30">30</option><option value="45">45</option>
+        </select>
+        <select id="notif-ampm" onchange="updateNotifPreview()">
+          <option>AM</option><option selected>PM</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="notif-card">
+      <div class="notif-row">
+        <div>
+          <div class="notif-title">Session Complete Alert</div>
+          <div class="notif-desc">Sound + vibrate when timer finishes</div>
+        </div>
+        <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <div class="notif-card">
+      <div class="notif-row">
+        <div>
+          <div class="notif-title">Streak Reminder</div>
+          <div class="notif-desc">Alert when your streak is at risk</div>
+        </div>
+        <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <div class="notif-card">
+      <div class="notif-row">
+        <div>
+          <div class="notif-title">Weekly Summary</div>
+          <div class="notif-desc">Every Sunday — your week in review</div>
+        </div>
+        <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <div class="notif-preview">
+      <div class="notif-preview-title">PREVIEW</div>
+      <div class="notif-bubble">
+        <div class="notif-app-icon">🎯</div>
+        <div class="notif-bubble-text">
+          <div class="notif-bubble-title">FocusFlow</div>
+          <div class="notif-bubble-body" id="notif-preview-text">Time to focus! Your daily session is ready. 🔥 3 day streak on the line!</div>
+        </div>
+      </div>
+    </div>
+
+    <br>
+    <button class="btn-primary" onclick="showToast('🔔','Notification settings saved!')">Save Settings</button>
+    <br>
+  </div>
+
+  <!-- ══ STATS ══ -->
+  <div class="screen" id="stats">
+    <h1 class="page-title">Your Stats</h1>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-card-label">Today</div>
+        <div class="stat-card-value" id="stat-today" style="color:var(--accent)">1</div>
+        <div class="stat-card-unit">tasks done</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Streak</div>
+        <div class="stat-card-value" style="color:#FF6B6B">3</div>
+        <div class="stat-card-unit">days 🔥</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Best Streak</div>
+        <div class="stat-card-value" style="color:var(--warning)">7</div>
+        <div class="stat-card-unit">days ever</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Total Focus</div>
+        <div class="stat-card-value" style="color:var(--success)">4</div>
+        <div class="stat-card-unit">hours</div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title-row">
+        <div class="chart-title">THIS WEEK</div>
+      </div>
+      <div class="chart" id="week-chart"></div>
+    </div>
+    <div class="total-card">
+      <div class="total-label">All-time tasks completed</div>
+      <div class="total-value" id="stat-total">28</div>
+    </div>
+  </div>
+
+  <!-- ══ SETTINGS ══ -->
+  <div class="screen" id="settings">
+    <h1 class="page-title">Settings</h1>
+    <div class="settings-section-label">ACCOUNT</div>
+    <div class="settings-card">
+      <div class="settings-label">Email</div>
+      <div class="settings-value">alex@example.com</div>
+    </div>
+    <div class="settings-card">
+      <div class="settings-label">Name</div>
+      <div class="settings-value">Alex Johnson</div>
+    </div>
+    <div class="settings-section-label">FOCUS DURATION (minutes)</div>
+    <div class="options-row" id="focus-options"></div>
+    <div class="settings-section-label">BREAK DURATION (minutes)</div>
+    <div class="options-row" id="break-options"></div>
+    <div class="settings-section-label">NOTIFICATIONS</div>
+    <div class="settings-card" onclick="switchTab('notif')" style="cursor:pointer">
+      <div class="settings-row">
+        <div>
+          <div class="settings-value">Notification Settings</div>
+          <div class="settings-label" style="margin:0">Daily reminders, alerts & more</div>
+        </div>
+        <span style="color:var(--muted);font-size:16px">›</span>
+      </div>
+    </div>
+    <div class="settings-section-label">APPEARANCE</div>
+    <div class="settings-card">
+      <div class="settings-row">
+        <span class="settings-value">Dark Mode</span>
+        <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+    <button class="btn-logout" onclick="showLogoutConfirm()">Log Out</button>
+    <div class="version-text">FocusFlow v2.0.0</div>
+  </div>
+
+  <!-- Nav bar -->
+  <nav class="nav-bar" id="nav-bar">
+    <button class="nav-item" id="nav-home" onclick="switchTab('home')">
+      <span class="nav-icon">⊟</span><span class="nav-label">Tasks</span>
+    </button>
+    <button class="nav-item" id="nav-notif" onclick="switchTab('notif')">
+      <span class="nav-icon">🔔</span><span class="nav-label">Alerts</span>
+    </button>
+    <button class="nav-item" id="nav-stats" onclick="switchTab('stats')">
+      <span class="nav-icon">◎</span><span class="nav-label">Stats</span>
+    </button>
+    <button class="nav-item" id="nav-settings" onclick="switchTab('settings')">
+      <span class="nav-icon">⊙</span><span class="nav-label">Settings</span>
+    </button>
+  </nav>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const state = {
+  tasks: [
+    { id: 1, title: 'Reply to emails',        priority: 'HIGH',   done: true,  notes: '' },
+    { id: 2, title: 'Review project brief',   priority: 'MEDIUM', done: false, notes: 'Check Notion doc' },
+    { id: 3, title: 'Read 10 pages',          priority: 'LOW',    done: false, notes: '' },
+  ],
+  activeTask: null,
+  editingId: null,
+  addPriority: 'MEDIUM',
+  editPriority: 'MEDIUM',
+  focusMinutes: 25,
+  breakMinutes: 5,
+  streak: 3,
+  timerInterval: null, timeLeft: 25*60, timerRunning: false,
+  breakInterval: null, breakLeft: 5*60, breakRunning: false,
+  deleteTargetId: null,
+  authTab: 'login',
+  onboardSlide: 0,
+};
+
+const FULLSCREEN = ['focus','done','brk','onboarding','auth'];
+const TABS = ['home','notif','stats','settings'];
+
+// ── Onboarding ────────────────────────────────────────────────────────────────
+const SLIDES = [
+  { icon: '🎯', title: 'Welcome to FocusFlow', desc: 'The simplest way to beat distraction and get things done — one task at a time.' },
+  { icon: '📋', title: 'Add Your Tasks', desc: 'Dump everything on your mind. Assign a priority and let FocusFlow guide your day.' },
+  { icon: '⏱', title: 'Focus, One Task at a Time', desc: 'Pick a task, start the 25-minute timer, and go. No multitasking allowed.' },
+  { icon: '🔥', title: 'Build Your Streak', desc: 'Complete tasks daily to keep your streak alive. Watch your productivity soar.' },
+];
+
+function renderOnboarding() {
+  const s = SLIDES[state.onboardSlide];
+  document.getElementById('onboard-slides').innerHTML = `
+    <div class="onboard-icon">${s.icon}</div>
+    <h2 class="onboard-title">${s.title}</h2>
+    <p class="onboard-desc">${s.desc}</p>`;
+  const dots = document.getElementById('dot-row');
+  dots.innerHTML = SLIDES.map((_,i) => `<div class="dot ${i===state.onboardSlide?'active':''}"></div>`).join('');
+  const btn = document.getElementById('onboard-next-btn');
+  btn.textContent = state.onboardSlide === SLIDES.length-1 ? 'Get Started 🚀' : 'Next →';
+}
+
+function nextSlide() {
+  if (state.onboardSlide < SLIDES.length-1) { state.onboardSlide++; renderOnboarding(); }
+  else skipOnboarding();
+}
+function skipOnboarding() { goTo('auth'); switchAuthTab('login'); }
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function switchAuthTab(tab) {
+  state.authTab = tab;
+  document.getElementById('tab-login').classList.toggle('active', tab==='login');
+  document.getElementById('tab-register').classList.toggle('active', tab==='register');
+  document.getElementById('forgot-btn').style.display = tab==='login' ? 'block' : 'none';
+  document.getElementById('auth-submit-btn').textContent = tab==='login' ? 'Log In' : 'Create Account';
+  document.getElementById('auth-error').textContent = '';
+  const f = document.getElementById('auth-fields');
+  if (tab==='login') {
+    f.innerHTML = `
+      <label class="form-label">EMAIL</label>
+      <input class="form-input" type="email" id="auth-email" placeholder="you@example.com">
+      <label class="form-label">PASSWORD</label>
+      <input class="form-input" type="password" id="auth-pass" placeholder="Your password">`;
+  } else {
+    f.innerHTML = `
+      <label class="form-label">YOUR NAME</label>
+      <input class="form-input" type="text" id="auth-name" placeholder="Alex Johnson">
+      <label class="form-label">EMAIL</label>
+      <input class="form-input" type="email" id="auth-email" placeholder="you@example.com">
+      <label class="form-label">PASSWORD</label>
+      <input class="form-input" type="password" id="auth-pass" placeholder="At least 6 characters">
+      <label class="form-label">CONFIRM PASSWORD</label>
+      <input class="form-input" type="password" id="auth-pass2" placeholder="Repeat password">`;
+  }
+}
+
+function submitAuth() {
+  const email = document.getElementById('auth-email')?.value.trim();
+  const pass  = document.getElementById('auth-pass')?.value;
+  const err   = document.getElementById('auth-error');
+  if (!email || !pass) { err.textContent = 'Please fill in all fields.'; return; }
+  if (!email.includes('@')) { err.textContent = 'Please enter a valid email address.'; return; }
+  if (state.authTab === 'register') {
+    const pass2 = document.getElementById('auth-pass2')?.value;
+    if (pass !== pass2) { err.textContent = 'Passwords do not match.'; return; }
+    if (pass.length < 6) { err.textContent = 'Password must be at least 6 characters.'; return; }
+  }
+  err.textContent = '';
+  const btn = document.getElementById('auth-submit-btn');
+  btn.textContent = 'Please wait...'; btn.disabled = true;
+  setTimeout(() => { btn.textContent = state.authTab==='login' ? 'Log In' : 'Create Account'; btn.disabled = false; switchTab('home'); showToast('👋','Welcome to FocusFlow!'); }, 900);
+}
+
+function showForgot() {
+  const email = document.getElementById('auth-email')?.value.trim();
+  if (!email) { document.getElementById('auth-error').textContent = 'Enter your email first.'; return; }
+  showToast('📧', 'Reset email sent! Check your inbox.');
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const isFullscreen = FULLSCREEN.includes(id);
+  document.getElementById('nav-bar').style.display = isFullscreen ? 'none' : 'flex';
+  updateSidebar(id);
+}
+
+function switchTab(id) {
+  goTo(id);
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navEl = document.getElementById('nav-' + id);
+  if (navEl) navEl.classList.add('active');
+  if (id === 'stats') renderChart();
+  if (id === 'home') renderTasks();
+}
+
+function jumpTo(id, sub) {
+  if (id === 'auth') { goTo('auth'); switchAuthTab(sub || 'login'); }
+  else if (TABS.includes(id)) switchTab(id);
+  else goTo(id);
+}
+function jumpToFocus() {
+  state.activeTask = state.tasks.find(t => !t.done) || state.tasks[0];
+  openFocus(state.activeTask);
+}
+
+function updateSidebar(active) {
+  document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+  // match by screen name in onclick
+  document.querySelectorAll('.sidebar-btn').forEach(b => {
+    if (b.onclick?.toString().includes(`'${active}'`)) b.classList.add('active');
+  });
+}
+
+// ── Tasks ─────────────────────────────────────────────────────────────────────
+function renderTasks() {
+  const doneCount = state.tasks.filter(t=>t.done).length;
+  const total = state.tasks.length;
+  const pct = total ? doneCount/total : 0;
+  document.getElementById('progress-fill').style.width = (pct*100)+'%';
+  document.getElementById('progress-text').textContent = `${doneCount}/${total} done`;
+  document.getElementById('done-chip').textContent = `✅ ${doneCount} today`;
+  const container = document.getElementById('task-list-container');
+  if (!total) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No tasks yet</div><div class="empty-desc">Tap + below to add your first task for today.</div></div>`;
+    return;
+  }
+  const sorted = [...state.tasks].sort((a,b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    return {HIGH:0,MEDIUM:1,LOW:2}[a.priority] - {HIGH:0,MEDIUM:1,LOW:2}[b.priority];
+  });
+  container.innerHTML = `<div class="task-list">${sorted.map(t => `
+    <div class="task-card ${t.done?'done':''}" onclick="${t.done?'':`openFocus(${JSON.stringify(t).replace(/"/g,"'")})`}">
+      <div class="checkbox ${t.done?'checked':''}">${t.done?'✓':''}</div>
+      <span class="task-title ${t.done?'strikethrough':''}">${t.title}</span>
+      <span class="priority-badge priority-${t.priority}">${{HIGH:'High',MEDIUM:'Medium',LOW:'Low'}[t.priority]}</span>
+      ${t.done ? '' : `<div class="task-card-actions">
+        <button class="task-action-btn" title="Edit" onclick="event.stopPropagation();openEdit(${t.id})">✏️</button>
+        <button class="task-action-btn" title="Delete" onclick="event.stopPropagation();openDeleteModal(${t.id})">🗑</button>
+      </div>`}
+      ${t.done ? '' : '<span class="task-arrow">▶</span>'}
+    </div>`).join('')}</div>`;
+}
+
+// ── Add Task ──────────────────────────────────────────────────────────────────
+function updateCharCount(inputId, countId) {
+  document.getElementById(countId).textContent = document.getElementById(inputId).value.length;
+}
+function updateAddBtn() {
+  document.getElementById('add-task-btn').disabled = !document.getElementById('new-task-input').value.trim();
+}
+function updateEditBtn() {
+  document.getElementById('edit-save-btn').disabled = !document.getElementById('edit-task-input').value.trim();
+}
+function selectPriority(ctx, p) {
+  state[ctx+'Priority'] = p;
+  ['HIGH','MEDIUM','LOW'].forEach(k => {
+    const btn = document.getElementById(`${ctx}-pri-${k}`);
+    if (btn) btn.className = 'pri-btn' + (k===p ? ` active-${k}` : '');
+  });
+}
+function addTask() {
+  const title = document.getElementById('new-task-input').value.trim();
+  if (!title) return;
+  state.tasks.push({ id: Date.now(), title, priority: state.addPriority, done: false, notes: document.getElementById('new-task-notes').value });
+  document.getElementById('new-task-input').value = '';
+  document.getElementById('new-task-notes').value = '';
+  document.getElementById('add-char-count').textContent = '0';
+  selectPriority('add','MEDIUM');
+  updateAddBtn();
+  renderTasks();
+  switchTab('home');
+  showToast('✅','Task added!');
+}
+
+// ── Edit Task ─────────────────────────────────────────────────────────────────
+function openEdit(id) {
+  const task = state.tasks.find(t=>t.id===id);
+  if (!task) return;
+  state.editingId = id;
+  state.editPriority = task.priority;
+  document.getElementById('edit-task-input').value = task.title;
+  document.getElementById('edit-char-count').textContent = task.title.length;
+  document.getElementById('edit-task-notes').value = task.notes || '';
+  selectPriority('edit', task.priority);
+  goTo('edit');
+}
+function saveEdit() {
+  const title = document.getElementById('edit-task-input').value.trim();
+  if (!title || !state.editingId) return;
+  state.tasks = state.tasks.map(t => t.id===state.editingId ? {...t, title, priority: state.editPriority, notes: document.getElementById('edit-task-notes').value} : t);
+  renderTasks();
+  switchTab('home');
+  showToast('✏️','Task updated!');
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+function openDeleteModal(id) {
+  state.deleteTargetId = id;
+  const task = state.tasks.find(t=>t.id===id);
+  document.getElementById('delete-modal-task').textContent = `"${task?.title}" will be permanently removed.`;
+  document.getElementById('delete-modal').classList.add('open');
+}
+function closeDeleteModal() { document.getElementById('delete-modal').classList.remove('open'); }
+function confirmDelete() {
+  state.tasks = state.tasks.filter(t=>t.id!==state.deleteTargetId);
+  closeDeleteModal();
+  renderTasks();
+  if (document.getElementById('edit').classList.contains('active')) switchTab('home');
+  showToast('🗑','Task deleted');
+}
+
+// ── Focus ─────────────────────────────────────────────────────────────────────
+function openFocus(task) {
+  if (typeof task === 'string') task = JSON.parse(task.replace(/'/g,'"'));
+  state.activeTask = task;
+  clearInterval(state.timerInterval);
+  state.timeLeft = state.focusMinutes * 60;
+  state.timerRunning = false;
+  document.getElementById('focus-task-name').textContent = task.title;
+  document.getElementById('play-btn').textContent = '▶ Start';
+  document.getElementById('timer-status').textContent = 'tap start';
+  updateTimerDisplay(); updateRing();
+  goTo('focus');
+}
+function fmt(s) { return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+function updateTimerDisplay() { document.getElementById('timer-display').textContent = fmt(state.timeLeft); }
+function updateRing() {
+  const progress = 1 - state.timeLeft/(state.focusMinutes*60);
+  document.getElementById('timer-ring').style.strokeDashoffset = 628.3*(1-progress);
+}
+function toggleTimer() {
+  if (state.timerRunning) {
+    clearInterval(state.timerInterval); state.timerRunning = false;
+    document.getElementById('play-btn').textContent = '▶ Resume';
+    document.getElementById('timer-status').textContent = 'paused';
+  } else {
+    state.timerRunning = true;
+    document.getElementById('play-btn').textContent = '⏸ Pause';
+    document.getElementById('timer-status').textContent = 'focusing...';
+    state.timerInterval = setInterval(() => {
+      if (state.timeLeft > 0) { state.timeLeft--; updateTimerDisplay(); updateRing(); }
+      else { clearInterval(state.timerInterval); state.timerRunning = false; timerComplete(); }
+    }, 1000);
+  }
+}
+function resetTimer() {
+  clearInterval(state.timerInterval); state.timerRunning = false;
+  state.timeLeft = state.focusMinutes*60;
+  document.getElementById('play-btn').textContent = '▶ Start';
+  document.getElementById('timer-status').textContent = 'tap start';
+  updateTimerDisplay(); updateRing();
+}
+function timerComplete() {
+  completeActiveTask(); showDoneScreen();
+}
+function markDone() {
+  clearInterval(state.timerInterval); state.timerRunning = false;
+  completeActiveTask(); showDoneScreen();
+}
+function completeActiveTask() {
+  if (!state.activeTask) return;
+  state.tasks = state.tasks.map(t => t.id===state.activeTask.id ? {...t, done:true} : t);
+  renderTasks();
+}
+function giveUp() {
+  clearInterval(state.timerInterval); state.timerRunning = false;
+  switchTab('home');
+}
+function showDoneScreen() {
+  const doneCount = state.tasks.filter(t=>t.done).length;
+  document.getElementById('done-task-name').textContent = state.activeTask?.title || '';
+  document.getElementById('done-badge').textContent = `🔥 ${state.streak} day streak · ✅ ${doneCount} done today`;
+  document.getElementById('stat-today').textContent = doneCount;
+  goTo('done');
+}
+
+// ── Break ─────────────────────────────────────────────────────────────────────
+function startBreak() {
+  state.breakLeft = state.breakMinutes*60; state.breakRunning = false;
+  document.getElementById('break-display').textContent = fmt(state.breakLeft);
+  document.getElementById('break-play-btn').textContent = '▶ Start';
+  goTo('brk');
+}
+function toggleBreak() {
+  if (state.breakRunning) {
+    clearInterval(state.breakInterval); state.breakRunning = false;
+    document.getElementById('break-play-btn').textContent = '▶ Resume';
+  } else {
+    state.breakRunning = true;
+    document.getElementById('break-play-btn').textContent = '⏸ Pause';
+    state.breakInterval = setInterval(() => {
+      if (state.breakLeft > 0) { state.breakLeft--; document.getElementById('break-display').textContent = fmt(state.breakLeft); }
+      else { clearInterval(state.breakInterval); state.breakRunning = false; endBreak(); }
+    }, 1000);
+  }
+}
+function endBreak() { clearInterval(state.breakInterval); state.breakRunning = false; switchTab('home'); }
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+function populateHours() {
+  const sel = document.getElementById('notif-hour');
+  if (!sel) return;
+  for (let h=1; h<=12; h++) sel.innerHTML += `<option ${h===9?'selected':''}>${String(h).padStart(2,'0')}</option>`;
+}
+function updateNotifPreview() {
+  const on = document.getElementById('daily-toggle').checked;
+  const h  = document.getElementById('notif-hour').value;
+  const m  = document.getElementById('notif-min').value;
+  const ap = document.getElementById('notif-ampm').value;
+  document.getElementById('time-picker').style.opacity = on ? '1' : '0.4';
+  document.getElementById('notif-preview-text').textContent = on
+    ? `Time to focus! Your daily session is ready. 🔥 ${state.streak} day streak on the line!`
+    : 'Notifications are turned off.';
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function renderChart() {
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const data = [3,5,2,6,4,1, state.tasks.filter(t=>t.done).length];
+  const max = Math.max(...data,1);
+  document.getElementById('week-chart').innerHTML = data.map((v,i) => `
+    <div class="bar-group">
+      <div class="bar-count">${v>0?v:''}</div>
+      <div class="bar ${i===6?'today':'past'}" style="height:${Math.max((v/max)*110,4)}px"></div>
+      <div class="bar-day">${days[i]}</div>
+    </div>`).join('');
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+function renderSettings() {
+  const fo = [15,20,25,30,45,60];
+  document.getElementById('focus-options').innerHTML = fo.map(m =>
+    `<button class="option-btn ${m===state.focusMinutes?'selected':''}" onclick="setFocusDur(${m})">${m}</button>`).join('');
+  document.getElementById('break-options').innerHTML = [5,10,15].map(m =>
+    `<button class="option-btn ${m===state.breakMinutes?'selected':''}" onclick="setBreakDur(${m})">${m}</button>`).join('');
+  document.getElementById('focus-dur-display').textContent = state.focusMinutes+' minutes';
+}
+function setFocusDur(m) { state.focusMinutes=m; state.timeLeft=m*60; renderSettings(); }
+function setBreakDur(m) { state.breakMinutes=m; renderSettings(); }
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(icon, text) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-icon').textContent = icon;
+  document.getElementById('toast-text').textContent = text;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Logout ────────────────────────────────────────────────────────────────────
+function showLogoutConfirm() {
+  if (confirm('Log out of FocusFlow?')) { goTo('auth'); switchAuthTab('login'); showToast('👋','Logged out successfully'); }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderOnboarding();
+switchAuthTab('login');
+renderTasks();
+renderSettings();
+renderChart();
+populateHours();
+updateNotifPreview();
+</script>
+</body>
+</html>
