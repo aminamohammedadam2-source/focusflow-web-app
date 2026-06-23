@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FocusFlow — Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0F0F1A;
+    --surface:  #1A1A2E;
+    --card:     #16213E;
+    --accent:   #7C3AED;
+    --light:    #A855F7;
+    --glow:     rgba(124,58,237,0.35);
+    --text:     #F1F0FF;
+    --muted:    #8B8BAE;
+    --success:  #6BCB77;
+    --danger:   #FF6B6B;
+    --warning:  #FFB347;
+    --border:   rgba(124,58,237,0.22);
+  }
+
+  body {
+    background: #060610;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 24px;
+  }
+
+  /* Phone shell */
+  .phone {
+    width: 375px;
+    min-height: 812px;
+    background: var(--bg);
+    border-radius: 44px;
+    overflow: hidden;
+    position: relative;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.08),
+      0 40px 80px rgba(0,0,0,0.7),
+      0 0 60px rgba(124,58,237,0.08);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Status bar */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 28px 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  /* Screens */
+  .screen {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    padding: 0 22px 16px;
+    overflow-y: auto;
+  }
+  .screen.active { display: flex; }
+
+  /* Nav bar */
+  .nav-bar {
+    display: flex;
+    background: var(--surface);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 10px 0 18px;
+    flex-shrink: 0;
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-family: inherit;
+    transition: color .2s;
+  }
+  .nav-item.active { color: var(--light); }
+  .nav-icon { font-size: 20px; }
+  .nav-label { font-size: 10px; font-weight: 600; }
+
+  /* ── Shared components ── */
+  .back-btn {
+    width: 38px; height: 38px; border-radius: 12px;
+    background: var(--surface); border: none; cursor: pointer;
+    color: var(--text); font-size: 17px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .btn-primary {
+    width: 100%; padding: 17px;
+    background: linear-gradient(135deg, var(--accent), var(--light));
+    border: none; border-radius: 16px;
+    color: #fff; font-size: 16px; font-weight: 700;
+    font-family: inherit; cursor: pointer;
+    box-shadow: 0 8px 24px var(--glow);
+    transition: opacity .15s, transform .1s;
+  }
+  .btn-primary:hover { opacity: .9; }
+  .btn-primary:active { transform: scale(.98); }
+  .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+
+  .btn-secondary {
+    width: 100%; padding: 16px;
+    background: var(--surface); border: none; border-radius: 16px;
+    color: var(--text); font-size: 15px; font-weight: 600;
+    font-family: inherit; cursor: pointer;
+    transition: opacity .15s;
+  }
+  .btn-secondary:hover { opacity: .8; }
+
+  /* ── HOME SCREEN ── */
+  #home .greeting { color: var(--muted); font-size: 13px; margin-top: 20px; margin-bottom: 4px; }
+  #home .page-title { color: var(--text); font-size: 26px; font-weight: 800; letter-spacing: -.5px; margin-bottom: 18px; }
+
+  .progress-card {
+    background: var(--surface);
+    border-radius: 18px;
+    padding: 16px;
+    margin-bottom: 18px;
+  }
+  .progress-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+  .progress-header span:first-child { color: var(--muted); font-size: 13px; }
+  .progress-header span:last-child { color: var(--light); font-size: 13px; font-weight: 700; }
+  .progress-track { height: 6px; background: #2A2A4A; border-radius: 99px; margin-bottom: 12px; }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--light));
+    border-radius: 99px;
+    transition: width .5s ease;
+  }
+  .chip-row { display: flex; gap: 10px; }
+  .chip {
+    font-size: 12px; font-weight: 600;
+    padding: 4px 12px; border-radius: 99px;
+    background: rgba(124,58,237,.15); color: var(--light);
+  }
+  .chip.green { background: rgba(107,203,119,.15); color: var(--success); }
+
+  .task-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 80px; }
+  .task-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px 14px;
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer;
+    transition: opacity .2s, border-color .2s;
+  }
+  .task-card.done { opacity: .45; border-color: transparent; cursor: default; }
+  .task-card:not(.done):hover { border-color: rgba(168,85,247,.4); }
+
+  .checkbox {
+    width: 22px; height: 22px; border-radius: 7px;
+    border: 2px solid var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 12px; font-weight: 700; color: #fff;
+    transition: background .2s, border-color .2s;
+  }
+  .checkbox.checked { background: var(--success); border-color: var(--success); }
+
+  .task-title { flex: 1; color: var(--text); font-size: 15px; font-weight: 600; line-height: 1.35; }
+  .task-title.strikethrough { text-decoration: line-through; color: var(--muted); }
+
+  .priority-badge {
+    padding: 3px 8px; border-radius: 8px;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+  .priority-HIGH   { background: rgba(255,107,107,.15); color: #FF6B6B; }
+  .priority-MEDIUM { background: rgba(255,179,71,.15);  color: #FFB347; }
+  .priority-LOW    { background: rgba(107,203,119,.15); color: #6BCB77; }
+
+  .task-arrow { color: var(--muted); font-size: 14px; }
+
+  .fab {
+    position: sticky; bottom: 0;
+    margin: 0 -22px -16px; padding: 16px 22px 22px;
+    background: linear-gradient(to top, var(--bg) 70%, transparent);
+  }
+
+  /* ── ADD TASK SCREEN ── */
+  #add .header { display: flex; align-items: center; gap: 14px; padding: 18px 0 24px; }
+  #add .page-title { color: var(--text); font-size: 22px; font-weight: 800; }
+  .form-label {
+    color: var(--muted); font-size: 11px; font-weight: 700;
+    letter-spacing: 1px; display: block; margin-bottom: 8px;
+  }
+  .form-input {
+    width: 100%; padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px; color: var(--text);
+    font-size: 15px; font-family: inherit;
+    outline: none; resize: none;
+    transition: border-color .2s;
+    margin-bottom: 4px;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .form-input::placeholder { color: var(--muted); }
+  .char-count { color: var(--muted); font-size: 11px; text-align: right; margin-bottom: 22px; }
+
+  .priority-row { display: flex; gap: 10px; margin-bottom: 24px; }
+  .pri-btn {
+    flex: 1; padding: 13px 0;
+    background: var(--surface);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    color: var(--muted); font-size: 13px; font-weight: 700;
+    font-family: inherit; cursor: pointer;
+    transition: all .2s;
+  }
+  .pri-btn.active-HIGH   { border-color: #FF6B6B; background: rgba(255,107,107,.12); color: #FF6B6B; }
+  .pri-btn.active-MEDIUM { border-color: #FFB347; background: rgba(255,179,71,.12);  color: #FFB347; }
+  .pri-btn.active-LOW    { border-color: #6BCB77; background: rgba(107,203,119,.12); color: #6BCB77; }
+
+  .info-card { background: var(--surface); border-radius: 14px; padding: 14px 16px; margin-bottom: 24px; }
+  .info-card-label { color: var(--muted); font-size: 13px; margin-bottom: 4px; }
+  .info-card-value { color: var(--light); font-size: 22px; font-weight: 800; }
+
+  /* ── FOCUS SCREEN ── */
+  #focus { align-items: center; }
+  #focus .back-row { align-self: flex-start; padding-top: 14px; margin-bottom: 20px; }
+  .focus-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px; }
+  .focus-task-name {
+    color: var(--text); font-size: 22px; font-weight: 800;
+    text-align: center; line-height: 1.35;
+    margin-bottom: 32px; max-width: 300px;
+  }
+
+  .ring-wrapper {
+    position: relative;
+    width: 230px; height: 230px;
+    margin-bottom: 32px;
+  }
+  .ring-wrapper svg { position: absolute; top: 0; left: 0; }
+  .ring-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .timer-display { color: var(--text); font-size: 52px; font-weight: 900; letter-spacing: -2px; }
+  .timer-status { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  .focus-controls { display: flex; gap: 12px; width: 100%; margin-bottom: 14px; }
+  .btn-play {
+    flex: 2; padding: 17px;
+    background: linear-gradient(135deg, var(--accent), var(--light));
+    border: none; border-radius: 16px;
+    color: #fff; font-size: 18px; font-weight: 700;
+    font-family: inherit; cursor: pointer;
+    box-shadow: 0 8px 24px var(--glow);
+    transition: opacity .15s;
+  }
+  .btn-play:hover { opacity: .9; }
+  .btn-reset {
+    flex: 1; padding: 17px;
+    background: var(--surface); border: none; border-radius: 16px;
+    color: var(--muted); font-size: 22px;
+    font-family: inherit; cursor: pointer;
+    transition: opacity .15s;
+  }
+  .btn-reset:hover { opacity: .8; }
+  .btn-done-early {
+    width: 100%; padding: 15px;
+    background: transparent;
+    border: 1px solid rgba(107,203,119,.4);
+    border-radius: 14px; color: var(--success);
+    font-size: 14px; font-weight: 600;
+    font-family: inherit; cursor: pointer;
+    margin-bottom: 10px;
+    transition: background .2s;
+  }
+  .btn-done-early:hover { background: rgba(107,203,119,.08); }
+  .btn-give-up {
+    background: none; border: none;
+    color: var(--muted); font-size: 14px;
+    font-family: inherit; cursor: pointer; padding: 10px;
+  }
+
+  /* ── DONE SCREEN ── */
+  #done { align-items: center; justify-content: center; }
+  .done-emoji { font-size: 72px; margin-bottom: 16px; animation: pop .4s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .done-title { color: var(--text); font-size: 28px; font-weight: 900; margin-bottom: 8px; }
+  .done-task { color: var(--muted); font-size: 15px; text-align: center; margin-bottom: 20px; max-width: 260px; }
+  .done-badge {
+    background: rgba(124,58,237,.15);
+    border-radius: 12px; padding: 10px 20px;
+    color: var(--light); font-weight: 700; font-size: 14px;
+    margin-bottom: 36px;
+  }
+  .done-actions { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+
+  /* ── BREAK SCREEN ── */
+  #brk { align-items: center; justify-content: center; }
+  .break-emoji { font-size: 64px; margin-bottom: 16px; }
+  .break-title { color: var(--text); font-size: 26px; font-weight: 800; margin-bottom: 8px; }
+  .break-sub { color: var(--muted); text-align: center; font-size: 14px; line-height: 1.6; margin-bottom: 36px; max-width: 260px; }
+  .break-timer { color: var(--light); font-size: 58px; font-weight: 900; letter-spacing: -2px; margin-bottom: 36px; }
+  .btn-skip { background: none; border: none; color: var(--muted); font-size: 14px; font-family: inherit; cursor: pointer; padding: 12px; margin-top: 10px; }
+
+  /* ── STATS SCREEN ── */
+  #stats .page-title { color: var(--text); font-size: 26px; font-weight: 800; padding-top: 20px; margin-bottom: 20px; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .stat-card { background: var(--card); border-radius: 18px; padding: 16px; }
+  .stat-card-label { color: var(--muted); font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+  .stat-card-value { font-size: 36px; font-weight: 900; margin-bottom: 2px; }
+  .stat-card-unit { color: var(--muted); font-size: 12px; }
+
+  .chart-card { background: var(--surface); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+  .chart-title { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-bottom: 16px; }
+  .chart { display: flex; align-items: flex-end; height: 130px; gap: 6px; }
+  .bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; justify-content: flex-end; }
+  .bar-count { color: var(--muted); font-size: 9px; min-height: 12px; }
+  .bar { width: 100%; border-radius: 6px; transition: height .4s ease; min-height: 4px; }
+  .bar.today { background: linear-gradient(180deg, var(--accent), var(--light)); }
+  .bar.past { background: var(--card); }
+  .bar-day { color: var(--muted); font-size: 9px; margin-top: 4px; }
+
+  .total-card { background: var(--card); border-radius: 18px; padding: 16px; text-align: center; margin-bottom: 24px; }
+  .total-label { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+  .total-value { color: var(--light); font-size: 48px; font-weight: 900; }
+
+  /* ── SETTINGS SCREEN ── */
+  #settings .page-title { color: var(--text); font-size: 26px; font-weight: 800; padding-top: 20px; margin-bottom: 20px; }
+  .settings-section-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-bottom: 10px; margin-top: 20px; }
+  .settings-card { background: var(--surface); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
+  .settings-row { display: flex; justify-content: space-between; align-items: center; }
+  .settings-label { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+  .settings-value { color: var(--text); font-size: 15px; font-weight: 500; }
+
+  .options-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .option-btn {
+    padding: 10px 16px; border-radius: 10px;
+    background: var(--surface);
+    border: 2px solid transparent;
+    color: var(--muted); font-size: 13px; font-weight: 600;
+    font-family: inherit; cursor: pointer; transition: all .2s;
+  }
+  .option-btn.selected { border-color: var(--accent); background: rgba(124,58,237,.15); color: var(--light); }
+
+  /* Toggle switch */
+  .toggle { position: relative; width: 44px; height: 26px; cursor: pointer; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; inset: 0; background: #2A2A4A; border-radius: 99px;
+    transition: background .2s;
+  }
+  .toggle-slider::before {
+    content: ''; position: absolute;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; top: 3px; left: 3px;
+    transition: transform .2s;
+  }
+  .toggle input:checked + .toggle-slider { background: var(--accent); }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(18px); }
+
+  .btn-logout {
+    width: 100%; margin-top: 28px; padding: 16px;
+    background: rgba(255,107,107,.12);
+    border: 1px solid rgba(255,107,107,.3);
+    border-radius: 14px; color: var(--danger);
+    font-size: 15px; font-weight: 700;
+    font-family: inherit; cursor: pointer;
+    transition: background .2s;
+  }
+  .btn-logout:hover { background: rgba(255,107,107,.2); }
+  .version-text { color: var(--muted); font-size: 12px; text-align: center; margin: 20px 0 32px; }
+
+  /* Scrollbar */
+  .screen::-webkit-scrollbar { width: 3px; }
+  .screen::-webkit-scrollbar-track { background: transparent; }
+  .screen::-webkit-scrollbar-thumb { background: var(--surface); border-radius: 99px; }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <span>9:41</span>
+    <span id="status-right">●●●</span>
+  </div>
+
+  <!-- ══ HOME SCREEN ══════════════════════════════════════════════════════ -->
+  <div class="screen active" id="home">
+    <p class="greeting">Good day, Alex 👋</p>
+    <h1 class="page-title">What's your focus?</h1>
+
+    <div class="progress-card">
+      <div class="progress-header">
+        <span>Today's progress</span>
+        <span id="progress-text">1/3 done</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill" style="width:33%"></div>
+      </div>
+      <div class="chip-row">
+        <div class="chip" id="streak-chip">🔥 3 day streak</div>
+        <div class="chip green" id="done-chip">✅ 1 today</div>
+      </div>
+    </div>
+
+    <div class="task-list" id="task-list"></div>
+
+    <div class="fab">
+      <button class="btn-primary" onclick="goTo('add')">+ Add Task</button>
+    </div>
+  </div>
+
+  <!-- ══ ADD TASK SCREEN ══════════════════════════════════════════════════ -->
+  <div class="screen" id="add">
+    <div class="header">
+      <button class="back-btn" onclick="goTo('home')">←</button>
+      <h2 class="page-title">New Task</h2>
+    </div>
+
+    <label class="form-label">TASK NAME</label>
+    <textarea class="form-input" id="new-task-input" rows="2"
+      placeholder="What do you need to do?" maxlength="120"
+      oninput="updateCharCount(); updateAddBtn()"></textarea>
+    <div class="char-count"><span id="char-count">0</span>/120</div>
+
+    <label class="form-label">PRIORITY</label>
+    <div class="priority-row">
+      <button class="pri-btn" id="pri-HIGH"   onclick="selectPriority('HIGH')">High</button>
+      <button class="pri-btn active-MEDIUM" id="pri-MEDIUM" onclick="selectPriority('MEDIUM')">Medium</button>
+      <button class="pri-btn" id="pri-LOW"    onclick="selectPriority('LOW')">Low</button>
+    </div>
+
+    <label class="form-label">NOTES (optional)</label>
+    <textarea class="form-input" id="new-task-notes" rows="3" placeholder="Any extra context..." style="margin-bottom:22px"></textarea>
+
+    <div class="info-card">
+      <div class="info-card-label">⏱ Focus session duration</div>
+      <div class="info-card-value" id="focus-duration-display">25 minutes</div>
+    </div>
+
+    <button class="btn-primary" id="add-task-btn" onclick="addTask()" disabled>Add Task</button>
+  </div>
+
+  <!-- ══ FOCUS SCREEN ══════════════════════════════════════════════════════ -->
+  <div class="screen" id="focus">
+    <div class="back-row">
+      <button class="back-btn" onclick="giveUp()">←</button>
+    </div>
+    <p class="focus-label">NOW FOCUSING ON</p>
+    <p class="focus-task-name" id="focus-task-name">Reply to emails</p>
+
+    <div class="ring-wrapper">
+      <svg width="230" height="230" viewBox="0 0 230 230">
+        <defs>
+          <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#7C3AED"/>
+            <stop offset="100%" stop-color="#A855F7"/>
+          </linearGradient>
+        </defs>
+        <!-- Track -->
+        <circle cx="115" cy="115" r="100" fill="none" stroke="#1A1A2E" stroke-width="14"/>
+        <!-- Progress ring -->
+        <circle id="timer-ring" cx="115" cy="115" r="100" fill="none"
+          stroke="url(#g)" stroke-width="14"
+          stroke-dasharray="628.3"
+          stroke-dashoffset="628.3"
+          stroke-linecap="round"
+          transform="rotate(-90 115 115)"
+          style="transition: stroke-dashoffset 1s linear"/>
+      </svg>
+      <div class="ring-center">
+        <div class="timer-display" id="timer-display">25:00</div>
+        <div class="timer-status" id="timer-status">tap start</div>
+      </div>
+    </div>
+
+    <div class="focus-controls">
+      <button class="btn-play" id="play-btn" onclick="toggleTimer()">▶ Start</button>
+      <button class="btn-reset" onclick="resetTimer()">↺</button>
+    </div>
+    <button class="btn-done-early" onclick="markDone()">✓ Mark as Done</button>
+    <button class="btn-give-up" onclick="giveUp()">Give Up</button>
+  </div>
+
+  <!-- ══ DONE SCREEN ══════════════════════════════════════════════════════ -->
+  <div class="screen" id="done">
+    <div class="done-emoji">✅</div>
+    <h2 class="done-title">Task Complete!</h2>
+    <p class="done-task" id="done-task-name">Reply to emails</p>
+    <div class="done-badge" id="done-badge">🔥 3 day streak · ✅ 2 done today</div>
+    <div class="done-actions">
+      <button class="btn-primary" onclick="startBreak()">☕ Take a 5-min Break</button>
+      <button class="btn-secondary" onclick="goTo('home')">Next Task →</button>
+    </div>
+  </div>
+
+  <!-- ══ BREAK SCREEN ══════════════════════════════════════════════════════ -->
+  <div class="screen" id="brk">
+    <div class="break-emoji">🧘</div>
+    <h2 class="break-title">Break Time</h2>
+    <p class="break-sub">Rest your eyes. Breathe. You earned it.</p>
+    <div class="break-timer" id="break-display">05:00</div>
+    <button class="btn-primary" id="break-play-btn" onclick="toggleBreak()" style="width:200px;margin:0 auto">▶ Start</button>
+    <button class="btn-skip" onclick="endBreak()">Skip Break</button>
+  </div>
+
+  <!-- ══ STATS SCREEN ══════════════════════════════════════════════════════ -->
+  <div class="screen" id="stats">
+    <h1 class="page-title">Your Stats</h1>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-card-label">Today</div>
+        <div class="stat-card-value" id="stat-today" style="color:var(--accent)">1</div>
+        <div class="stat-card-unit">tasks done</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Streak</div>
+        <div class="stat-card-value" id="stat-streak" style="color:#FF6B6B">3</div>
+        <div class="stat-card-unit">days 🔥</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Best Streak</div>
+        <div class="stat-card-value" id="stat-best" style="color:var(--warning)">7</div>
+        <div class="stat-card-unit">days ever</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Total Focus</div>
+        <div class="stat-card-value" id="stat-focus" style="color:var(--success)">4</div>
+        <div class="stat-card-unit">hours</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">THIS WEEK</div>
+      <div class="chart" id="week-chart"></div>
+    </div>
+
+    <div class="total-card">
+      <div class="total-label">All-time tasks completed</div>
+      <div class="total-value" id="stat-total">28</div>
+    </div>
+  </div>
+
+  <!-- ══ SETTINGS SCREEN ══════════════════════════════════════════════════ -->
+  <div class="screen" id="settings">
+    <h1 class="page-title">Settings</h1>
+
+    <div class="settings-section-label">ACCOUNT</div>
+    <div class="settings-card">
+      <div class="settings-label">Email</div>
+      <div class="settings-value">alex@example.com</div>
+    </div>
+    <div class="settings-card">
+      <div class="settings-label">Name</div>
+      <div class="settings-value">Alex Johnson</div>
+    </div>
+
+    <div class="settings-section-label">FOCUS DURATION (minutes)</div>
+    <div class="options-row" id="focus-options"></div>
+
+    <div class="settings-section-label">BREAK DURATION (minutes)</div>
+    <div class="options-row" id="break-options"></div>
+
+    <div class="settings-section-label">NOTIFICATIONS</div>
+    <div class="settings-card">
+      <div class="settings-row">
+        <span class="settings-value">Daily focus reminder</span>
+        <label class="toggle">
+          <input type="checkbox" checked onchange="updateNotifLabel(this)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <button class="btn-logout" onclick="alert('Logged out (demo mode)')">Log Out</button>
+    <div class="version-text">FocusFlow v1.0.0</div>
+  </div>
+
+  <!-- Nav Bar (hidden on focus/done/break) -->
+  <nav class="nav-bar" id="nav-bar">
+    <button class="nav-item active" id="nav-home" onclick="switchTab('home')">
+      <span class="nav-icon">⊟</span>
+      <span class="nav-label">Tasks</span>
+    </button>
+    <button class="nav-item" id="nav-stats" onclick="switchTab('stats')">
+      <span class="nav-icon">◎</span>
+      <span class="nav-label">Stats</span>
+    </button>
+    <button class="nav-item" id="nav-settings" onclick="switchTab('settings')">
+      <span class="nav-icon">⊙</span>
+      <span class="nav-label">Settings</span>
+    </button>
+  </nav>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+const state = {
+  tasks: [
+    { id: 1, title: 'Reply to emails',       priority: 'HIGH',   done: true  },
+    { id: 2, title: 'Review project brief',  priority: 'MEDIUM', done: false },
+    { id: 3, title: 'Read 10 pages',         priority: 'LOW',    done: false },
+  ],
+  activeTask: null,
+  selectedPriority: 'MEDIUM',
+  focusMinutes: 25,
+  breakMinutes: 5,
+  streak: 3,
+  // Timer
+  timerInterval: null,
+  timeLeft: 25 * 60,
+  timerRunning: false,
+  // Break timer
+  breakInterval: null,
+  breakLeft: 5 * 60,
+  breakRunning: false,
+};
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+const FULLSCREEN_SCREENS = ['focus', 'done', 'brk'];
+
+function goTo(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  const hideNav = FULLSCREEN_SCREENS.includes(screenId);
+  document.getElementById('nav-bar').style.display = hideNav ? 'none' : 'flex';
+}
+
+function switchTab(tabId) {
+  goTo(tabId);
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('nav-' + tabId).classList.add('active');
+  if (tabId === 'stats') renderChart();
+}
+
+// ── Task Rendering ───────────────────────────────────────────────────────────
+function renderTasks() {
+  const list = document.getElementById('task-list');
+  const doneCount = state.tasks.filter(t => t.done).length;
+  const total = state.tasks.length;
+  const pct = total ? doneCount / total : 0;
+
+  document.getElementById('progress-fill').style.width = (pct * 100) + '%';
+  document.getElementById('progress-text').textContent = `${doneCount}/${total} done`;
+  document.getElementById('done-chip').textContent = `✅ ${doneCount} today`;
+  document.getElementById('stat-today').textContent = doneCount;
+
+  const sorted = [...state.tasks].sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    const order = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+    return order[a.priority] - order[b.priority];
+  });
+
+  list.innerHTML = sorted.map(task => `
+    <div class="task-card ${task.done ? 'done' : ''}"
+      onclick="${task.done ? '' : `startFocus(${task.id})`}">
+      <div class="checkbox ${task.done ? 'checked' : ''}">
+        ${task.done ? '✓' : ''}
+      </div>
+      <span class="task-title ${task.done ? 'strikethrough' : ''}">${task.title}</span>
+      <span class="priority-badge priority-${task.priority}">
+        ${{ HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' }[task.priority]}
+      </span>
+      ${task.done ? '' : '<span class="task-arrow">▶</span>'}
+    </div>
+  `).join('');
+}
+
+// ── Add Task ─────────────────────────────────────────────────────────────────
+function updateCharCount() {
+  const val = document.getElementById('new-task-input').value;
+  document.getElementById('char-count').textContent = val.length;
+}
+function updateAddBtn() {
+  const val = document.getElementById('new-task-input').value.trim();
+  document.getElementById('add-task-btn').disabled = !val;
+}
+function selectPriority(p) {
+  state.selectedPriority = p;
+  ['HIGH','MEDIUM','LOW'].forEach(k => {
+    const btn = document.getElementById('pri-' + k);
+    btn.className = 'pri-btn' + (k === p ? ` active-${k}` : '');
+  });
+}
+function addTask() {
+  const title = document.getElementById('new-task-input').value.trim();
+  if (!title) return;
+  state.tasks.push({
+    id: Date.now(),
+    title,
+    priority: state.selectedPriority,
+    done: false,
+  });
+  document.getElementById('new-task-input').value = '';
+  document.getElementById('new-task-notes').value = '';
+  document.getElementById('char-count').textContent = '0';
+  selectPriority('MEDIUM');
+  updateAddBtn();
+  renderTasks();
+  switchTab('home');
+}
+
+// ── Focus Flow ───────────────────────────────────────────────────────────────
+function startFocus(id) {
+  state.activeTask = state.tasks.find(t => t.id === id);
+  clearInterval(state.timerInterval);
+  state.timeLeft = state.focusMinutes * 60;
+  state.timerRunning = false;
+  document.getElementById('focus-task-name').textContent = state.activeTask.title;
+  document.getElementById('play-btn').textContent = '▶ Start';
+  document.getElementById('timer-status').textContent = 'tap start';
+  updateTimerDisplay();
+  updateRing();
+  goTo('focus');
+}
+
+function fmt(s) {
+  return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+}
+
+function updateTimerDisplay() {
+  document.getElementById('timer-display').textContent = fmt(state.timeLeft);
+}
+
+function updateRing() {
+  const total = state.focusMinutes * 60;
+  const progress = 1 - state.timeLeft / total;
+  const circumference = 2 * Math.PI * 100; // r=100
+  const offset = circumference * (1 - progress);
+  document.getElementById('timer-ring').style.strokeDashoffset = offset;
+}
+
+function toggleTimer() {
+  if (state.timerRunning) {
+    clearInterval(state.timerInterval);
+    state.timerRunning = false;
+    document.getElementById('play-btn').textContent = '▶ Resume';
+    document.getElementById('timer-status').textContent = 'paused';
+  } else {
+    state.timerRunning = true;
+    document.getElementById('play-btn').textContent = '⏸ Pause';
+    document.getElementById('timer-status').textContent = 'focusing...';
+    state.timerInterval = setInterval(() => {
+      if (state.timeLeft > 0) {
+        state.timeLeft--;
+        updateTimerDisplay();
+        updateRing();
+      } else {
+        clearInterval(state.timerInterval);
+        state.timerRunning = false;
+        timerComplete();
+      }
+    }, 1000);
+  }
+}
+
+function resetTimer() {
+  clearInterval(state.timerInterval);
+  state.timerRunning = false;
+  state.timeLeft = state.focusMinutes * 60;
+  document.getElementById('play-btn').textContent = '▶ Start';
+  document.getElementById('timer-status').textContent = 'tap start';
+  updateTimerDisplay();
+  updateRing();
+}
+
+function timerComplete() {
+  if (state.activeTask) {
+    state.tasks = state.tasks.map(t =>
+      t.id === state.activeTask.id ? { ...t, done: true } : t
+    );
+    renderTasks();
+  }
+  showDone();
+}
+
+function markDone() {
+  clearInterval(state.timerInterval);
+  state.timerRunning = false;
+  if (state.activeTask) {
+    state.tasks = state.tasks.map(t =>
+      t.id === state.activeTask.id ? { ...t, done: true } : t
+    );
+    renderTasks();
+  }
+  showDone();
+}
+
+function giveUp() {
+  clearInterval(state.timerInterval);
+  state.timerRunning = false;
+  switchTab('home');
+}
+
+function showDone() {
+  const doneCount = state.tasks.filter(t => t.done).length;
+  document.getElementById('done-task-name').textContent = state.activeTask?.title || '';
+  document.getElementById('done-badge').textContent =
+    `🔥 ${state.streak} day streak · ✅ ${doneCount} done today`;
+  document.getElementById('stat-today').textContent = doneCount;
+  goTo('done');
+}
+
+// ── Break ────────────────────────────────────────────────────────────────────
+function startBreak() {
+  state.breakLeft = state.breakMinutes * 60;
+  state.breakRunning = false;
+  document.getElementById('break-display').textContent = fmt(state.breakLeft);
+  document.getElementById('break-play-btn').textContent = '▶ Start';
+  goTo('brk');
+}
+
+function toggleBreak() {
+  if (state.breakRunning) {
+    clearInterval(state.breakInterval);
+    state.breakRunning = false;
+    document.getElementById('break-play-btn').textContent = '▶ Resume';
+  } else {
+    state.breakRunning = true;
+    document.getElementById('break-play-btn').textContent = '⏸ Pause';
+    state.breakInterval = setInterval(() => {
+      if (state.breakLeft > 0) {
+        state.breakLeft--;
+        document.getElementById('break-display').textContent = fmt(state.breakLeft);
+      } else {
+        clearInterval(state.breakInterval);
+        state.breakRunning = false;
+        endBreak();
+      }
+    }, 1000);
+  }
+}
+
+function endBreak() {
+  clearInterval(state.breakInterval);
+  state.breakRunning = false;
+  switchTab('home');
+}
+
+// ── Stats Chart ──────────────────────────────────────────────────────────────
+function renderChart() {
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const data = [3, 5, 2, 6, 4, 1, state.tasks.filter(t=>t.done).length];
+  const maxVal = Math.max(...data, 1);
+  const chart = document.getElementById('week-chart');
+  chart.innerHTML = data.map((v, i) => `
+    <div class="bar-group">
+      <div class="bar-count">${v > 0 ? v : ''}</div>
+      <div class="bar ${i === 6 ? 'today' : 'past'}"
+        style="height:${Math.max((v/maxVal)*110, 4)}px"></div>
+      <div class="bar-day">${days[i]}</div>
+    </div>
+  `).join('');
+}
+
+// ── Settings ─────────────────────────────────────────────────────────────────
+function renderFocusOptions() {
+  const opts = [15, 20, 25, 30, 45, 60];
+  document.getElementById('focus-options').innerHTML = opts.map(m => `
+    <button class="option-btn ${m === state.focusMinutes ? 'selected' : ''}"
+      onclick="setFocus(${m})">${m}</button>
+  `).join('');
+  document.getElementById('focus-duration-display').textContent = state.focusMinutes + ' minutes';
+}
+function setFocus(m) {
+  state.focusMinutes = m;
+  state.timeLeft = m * 60;
+  renderFocusOptions();
+}
+
+function renderBreakOptions() {
+  const opts = [5, 10, 15];
+  document.getElementById('break-options').innerHTML = opts.map(m => `
+    <button class="option-btn ${m === state.breakMinutes ? 'selected' : ''}"
+      onclick="setBreak(${m})">${m}</button>
+  `).join('');
+}
+function setBreak(m) {
+  state.breakMinutes = m;
+  renderBreakOptions();
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+renderTasks();
+renderFocusOptions();
+renderBreakOptions();
+renderChart();
+</script>
+</body>
+</html>
